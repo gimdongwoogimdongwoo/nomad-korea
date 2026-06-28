@@ -1,23 +1,24 @@
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Heart, ChevronRight, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react"
+import { ChevronRight, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react"
 import { GaugeBar } from "./GaugeBar"
+import { WishlistButton } from "./WishlistButton"
 import { cn } from "@/lib/utils"
 import type { City } from "@/data/cities"
 
 interface CityCardProps {
   city: City
+  isWishlisted: boolean
 }
 
 function formatCost(won: number) {
   return `₩${won.toLocaleString("ko-KR")}`
 }
 
-export function CityCard({ city }: CityCardProps) {
+export function CityCard({ city, isWishlisted }: CityCardProps) {
   return (
     <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -113,10 +114,7 @@ export function CityCard({ city }: CityCardProps) {
           자세히
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
-        <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-red-500">
-          <Heart className="h-3.5 w-3.5" />
-          찜
-        </Button>
+        <WishlistButton cityId={city.id} isWishlisted={isWishlisted} />
       </CardFooter>
     </Card>
   )

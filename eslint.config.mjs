@@ -10,6 +10,15 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // 테스트 파일은 빌드 ESLint에서 제외
+  {
+    ignores: [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "tests/**",
+      "e2e/**",
+    ],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
 

@@ -7,8 +7,11 @@ import { GaugeBar } from "@/components/city/GaugeBar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { buttonVariants } from "@/components/ui/button"
-import { cities } from "@/data/cities"
-import { reviews } from "@/data/reviews"
+import { WishlistButton } from "@/components/city/WishlistButton"
+import { ReviewForm } from "@/components/city/ReviewForm"
+import { createClient } from "@/lib/supabase/server"
+import { mapCityRow } from "@/lib/cities"
+import type { CityRow } from "@/lib/cities"
 import { cn } from "@/lib/utils"
 
 function formatCost(won: number) {
@@ -21,10 +24,33 @@ export default async function CityDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const city = cities.find((c) => c.id === id)
-  if (!city) notFound()
+  const supabase = await createClient()
 
-  const cityReviews = reviews.filter((r) => r.cityId === id)
+  const [
+    { data: cityRow },
+    { data: reviewRows },
+    { data: { user } },
+  ] = await Promise.all([
+    supabase.from("cities").select("*").eq("id", id).single(),
+    supabase.from("reviews").select("*").eq("city_id", id).order("created_at", { ascending: false }),
+    supabase.auth.getUser(),
+  ])
+
+  if (!cityRow) notFound()
+  const city = mapCityRow(cityRow as CityRow)
+
+  let isWishlisted = false
+  if (user) {
+    const { data } = await supabase
+      .from("wishlists")
+      .select("city_id")
+      .eq("user_id", user.id)
+      .eq("city_id", id)
+      .maybeSingle()
+    isWishlisted = !!data
+  }
+
+  const cityReviews = reviewRows ?? []
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -62,6 +88,7 @@ export default async function CityDetailPage({
               ))}
             </div>
           </div>
+          <WishlistButton cityId={city.id} isWishlisted={isWishlisted} size="default" />
         </div>
 
         <Separator className="mb-6" />
@@ -122,7 +149,7 @@ export default async function CityDetailPage({
             </span>
             <span className="flex items-center gap-1.5">
               <MessageSquare className="h-4 w-4" aria-hidden />
-              <span aria-label={`후기 ${city.reviews}개`}>후기 {city.reviews.toLocaleString()}개</span>
+              <span aria-label={`후기 ${cityReviews.length}개`}>후기 {cityReviews.length.toLocaleString()}개</span>
             </span>
           </div>
         </section>
@@ -134,8 +161,13 @@ export default async function CityDetailPage({
           <h2 className="text-lg font-semibold mb-3">
             🗣️ 노마드 후기 ({cityReviews.length}개)
           </h2>
+
+          <div className="mb-4">
+            <ReviewForm cityId={city.id} isLoggedIn={!!user} />
+          </div>
+
           {cityReviews.length === 0 ? (
-            <p className="text-muted-foreground text-sm">아직 후기가 없어요.</p>
+            <p className="text-muted-foreground text-sm">아직 후기가 없어요. 첫 번째 후기를 남겨보세요!</p>
           ) : (
             <div className="space-y-3">
               {cityReviews.map((review) => (
@@ -144,7 +176,7 @@ export default async function CityDetailPage({
                     <span className="font-medium text-sm">{review.author}</span>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <span>⭐ {review.rating}</span>
-                      <span>{review.date}</span>
+                      <span>{new Date(review.created_at).toLocaleDateString("ko-KR", { year: "numeric", month: "long" })}</span>
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">{review.content}</p>
